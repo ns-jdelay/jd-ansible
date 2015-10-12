@@ -1,0 +1,28 @@
+- hosts: all
+  remote_user: ubuntu
+  sudo: True
+  tasks:
+
+    - name: Add line to file that includes graphite conf
+      lineinfile:
+        insertafter: EOF
+        state: present
+        line: 'Include "/etc/collectd/graphite.conf"'
+        line: 'Include "/etc/collectd/lalala.conf"'
+        dest: /etc/ssh/sshd_config
+
+    - name: Test string change
+      replace: dest=/etc/ssh/sshd_config regexp='.*X11Forwarding yes' replace='X11Forwarding no'
+
+    - name: Test string change/update if not exist
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)new string(.*)" line="new string yes" state=present
+
+    - name: Test string change/update if not exist 2
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)new string 2(.*)" line="new string 2 yes" state=present
+
+    - name: Test string 3 LoginGraceTime 60
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)LoginGraceTime(.*)" line="LoginGraceTime 99" state=present
+
+# Works to replace existing value, but won't add if it doesn't exist
+#    - name: Test string change/update if not exist
+#      replace: dest=/etc/ssh/sshd_config regexp='.*new string yes' replace='new string no' backup=yes

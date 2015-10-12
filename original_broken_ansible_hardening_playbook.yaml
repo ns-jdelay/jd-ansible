@@ -1,0 +1,59 @@
+---
+#This playbook updates basic server hardening settings applicable to all Narrative Science systems.
+
+- hosts: all
+  remote_user: ubuntu
+  sudo:  True
+
+  handlers:
+    - name: restart acct
+      service: name=acct state=restarted
+
+  tasks:
+
+#    - name: Install debsums
+#      apt: name=debsums state=present
+
+    - name: Install apt-show-versions
+      apt: name=apt-show-versions state=present
+
+    - name: Install acct for auditing
+      apt: name=acct state=present
+
+    - name: Limit acct logging
+      lineinfile: dest=/etc/default/acct regexp='ACCT_LOGGING="30"' line="ACCT_LOGGING=\"07\"" state=present
+      notify:
+        - restart acct
+
+    - name: Install sysstat
+      apt: name=sysstat state=present
+    
+    - name: Enable sar cron jobs 
+      lineinfile: dest=/etc/default/sysstat regexp="ENABLED=\"false\"" line="ENABLED=\"true\"" state=present
+
+    - name: Secure homedirs
+      file: path=/home/ubuntu owner=ubuntu group=ubuntu mode=0750 state=directory recurse=yes
+
+#    - name: Update vars
+#      replace:  dest=/etc/ssh/sshd_config regexp="^(.*?)X11Forwarding yes" replace="X11Forwarding no"  
+
+
+ # Updating SSH settings to comply with Narrative Science standards
+    - name: Add SSH Session Settings
+       lineinfile: dest=/etc/ssh/sshd_config dest=/etc/ssh/sshd_config line="#Custom entries by Ansible. Please don't edit these settings." state=present
+#      lineinfile: dest=/etc/ssh/sshd_config line="TCPKeepAlive yes" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config line="ClientAliveInterval 4320" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config line="ClientAliveCountMax 32" state=present
+#
+#    - name: Account Policy Settings
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="X11Forwarding yes" line="X11Forwarding no" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="PermitRootLogin*" line="PermitRootLogin no" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="PermitEmptyPasswords yes" line="PermitEmptyPasswords no" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="PasswordAuthentication yes" line="PasswordAuthentication no" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="LoginGraceTime" line="LoginGraceTime 60" state=present
+#
+#    - name: Network Stack Settings
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="Protocol" line="Protocol 2" state=present
+#      lineinfile: dest=/etc/ssh/sshd_config regexp="UsePrivilegeSeparation no" line="UsePrivilegeSeparation yes" state=present
+#    - name: Restart SSH
+#      command: service ssh restart

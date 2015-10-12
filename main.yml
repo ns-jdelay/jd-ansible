@@ -1,0 +1,79 @@
+---
+###This playbook updates basic server hardening settings applicable to all Narrative Science systems.
+
+- hosts: all
+  remote_user: ubuntu
+  sudo:  True
+
+  handlers:
+    - name: restart acct
+      service: name=acct state=restarted
+
+    - name: restart sysstat
+      service: name=sysstat state=restarted
+
+  tasks:
+
+### Update apt-get cache
+    - apt: update_cache=yes
+
+### Install debsums, which provides a mechanism tox` audit processes and verify the authenticity of core system files.
+    - name: Install debsums
+      apt: name=debsums state=present
+
+### apt-show-versions shows upgrade options for legacy/vulnerable packages.
+    - name: Install apt-show-versions
+      apt: name=apt-show-versions state=present
+
+### acct allows logging of user information with significant process changes
+    - name: Install acct for auditing
+      apt: name=acct state=present
+
+    - name: Limit acct logging
+      lineinfile: dest=/etc/default/acct regexp='ACCT_LOGGING="30"' line='ACCT_LOGGING="07"' state=present
+      notify:
+        - restart acct
+
+### Systat logs key metrics in plain text format, which can be used to track core system functions, including per pid <-> per user auditing & system task activity.  Sar provides a basic text based view into the systat logs.
+    - name: Install sysstat
+      apt: name=sysstat state=present
+
+    - name: Enable stat collection
+      lineinfile: dest=/etc/default/sysstat regexp="ENABLED=\"false\"" line="ENABLED=\"true\"" state=present
+      notify:
+        - restart sysstat
+
+### Ensure homedirs & files are not world accessible.
+    - name: Secure homedirs
+      file: path=/home/ubuntu owner=ubuntu group=ubuntu mode=0750 state=directory recurse=yes
+
+### Updating SSH settings to comply with Narrative Science security standards.
+    - name: Setting SSH KeepAlive
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)TCPKeepAlive(.*)" line="TCPKeepAlive yes" state=present
+    - name: Setting ClientAliveInterval
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)ClientAliveInterval(.*)" line="ClientAliveInterval 4320" state=present
+    - name: Setting ClientAliveCountMax
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)ClientAliveCountMax(.*)" line="ClientAliveCountMax 32" state=present
+
+    - name: Account Policy Settings - X11 Forwarding
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)X11Forwarding(.*)" line="X11Forwarding no" state=present
+
+    - name: Disabling Root Login Without Password
+      lineinfile: dest=/etc/ssh/sshd_config regexp="(.*)PermitRootLogin(.*)" line="PermitRootLogin no" state=present
+
+    - name: Disabling Empty Passwords
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)PermitEmptyPasswords(.*)" line="PermitEmptyPasswords no" state=present
+    - name: Disabling Password Authentication
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)PasswordAuthentication(.*)" line="PasswordAuthentication no" state=present
+
+    - name: Setting Login Grace Time
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)LoginGraceTime(.*)" line="LoginGraceTime 60" state=present
+    - name: Forcing TCP Protocol 2
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)Protocol(.*)" line="Protocol 2" state=present
+
+    - name: Setting PrivilegeSeparation
+      lineinfile: dest=/etc/ssh/sshd_config regexp="^(.*)UsePrivilegeSeparation(.*)" line="UsePrivilegeSeparation yes" state=present
+
+### By design, this will restart ssh every time it is run.  This will not impact any existing connections.  It is needed to apply any new settings.
+    - name: Restart SSH
+      command: service ssh restart
